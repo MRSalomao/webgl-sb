@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Parcel Sandbox</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <meta charset="UTF-8" />
+  </head>
+
+  <body>
+    <div id="app">
+      <div
+        id="logs"
+        style="background: red; 
+        color: white; 
+        min-height: 50px; 
+        width: 100%;"
+      >
+        Logs:<br />
+      </div>
+      <div>
+        <div>Pick WebGL engine to use:</div>
+        <br />
+        <input type="radio" name="enginetype" value="pixi" checked />
+        <label for="canvas-type">PIXI (WebGL)</label>
+        <input type="radio" name="enginetype" value="pure" />
+        <label for="canvas-type">Pure WebGL</label>
+        <input type="radio" name="enginetype" value="threejs" disabled />
+        <label for="canvas-type">Three.js (TODO)</label>
+      </div>
+      <br />
+      <button id="drawToFirst">Draw to the first created canvas</button>
+      <br />
+      <br />
+      <input type="checkbox" name="draw" id="draw" checked />
+      <label for="draw">Draw image to new WebGL canvas</label>
+      <br />
+      <br />
+      <!-- <img src="./img.jpg" style="width: 100px;" /> -->
+      <img src="./4000x4000.png" style="width: 100px;" />
+      <div>
+        <div>Pick type of canvas to create:</div>
+        <br />
+        <input type="radio" name="canvastype" value="webgl" checked />
+        <label for="canvas-type">WebGL</label>
+        <input type="radio" name="canvastype" value="2d" />
+        <label for="canvas-type">2D</label>
+      </div>
+    </div>
+
+    <script src="src/index.js"></script>
+  </body>
+</html>
