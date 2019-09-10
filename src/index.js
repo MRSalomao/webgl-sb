@@ -123,6 +123,10 @@ document.getElementById("drawToFirst").onclick = async () => {
   }
 };
 
+// https://books.google.com.mx/books?id=6crECQAAQBAJ&pg=PA28&lpg=PA28&dq=%22webgl%22+memory+depth&source=bl&ots=Jral6YQ8Qy&sig=ACfU3U107QK1Az5Q5vhjVtGz5YoIQ6L-xA&hl=en&sa=X&ved=2ahUKEwjBpIatiMfkAhUHna0KHdgKBrMQ6AEwDHoECAcQAQ#v=onepage&q=memory%20overhead&f=false
+//
+// https://mynameismjp.wordpress.com/2012/10/24/msaa-overview/
+//
 // override webgl context creation and save context to a WeakMap so that it does not catch repeated contexts
 // remove dereferenced canvases from the dictionary
 // override texImage2d to keep track of uploaded images - use gl.getParameter(gl.ACTIVE_TEXTURE) to know what's the active texture slot
@@ -138,16 +142,44 @@ var glContexts = [];
 
 HTMLCanvasElement.prototype.getContext = (function(create) {
   return function() {
-    var ctx = create.apply(this, arguments);
-    if (arguments[0].indexOf("webgl") !== -1 && !glContextsWM.has(ctx)) {
-      glContextsWM.set(ctx, []);
+    var gl = create.apply(this, arguments);
+    if (arguments[0].indexOf("webgl") !== -1 && !glContextsWM.has(gl)) {
+      glContexts.push(gl);
+      glContextsWM.set(gl, {
+        canvas: {
+          w: gl.canvas.width,
+          h: gl.canvas.height,
+          bpp:
+            (gl.getParameter(gl.RED_BITS) +
+              gl.getParameter(gl.GREEN_BITS) +
+              gl.getParameter(gl.BLUE_BITS) +
+              gl.getParameter(gl.ALPHA_BITS)) /
+            8,
+          sampleCoverage: gl.getParameter(gl.SAMPLE_COVERAGE_VALUE),
+          bpd: gl.getParameter(gl.DEPTH_BITS) / 8
+        }
+      });
+
+      // var handler = {
+      //   get: function(obj, prop) {
+      //     return obj[prop];
+      //   }
+      // };
+
+      // var p = new Proxy({}, handler);
+      // p.a = 1;
+      // p.b = undefined;
+
+      // console.log(p.a, p.b); // 1, undefined
+      // console.log("c" in p, p.c); // false, 37
+
       console.log(
-        "New GL context created with args: " + arguments[0]
-        // new Error().stack
+        "New GL context created with args: " + JSON.stringify(arguments)
       );
+      // console.log(new Error().stack);
       getTotalGPUMemory();
     }
-    return ctx;
+    return gl;
   };
 })(HTMLCanvasElement.prototype.getContext);
 
@@ -166,7 +198,8 @@ WebGLRenderingContext.prototype.texImage2D = (function(texImage2D) {
     texImage2D.apply(this, arguments);
     glContextsWM.get(this)[attachment] = {
       w: w,
-      h: h
+      h: h,
+      bpp: arguments[2] === gl.RGBA ? 4 : 3
     };
 
     console.log("New texture uploaded args: " + JSON.stringify(arguments));
@@ -194,10 +227,10 @@ WebGL2RenderingContext.prototype.texImage2D = (function(texImage2D) {
     glContextsWM.get(this)[attachment] = {
       w: w,
       h: h,
-      
+      bpp: arguments[2] === gl.RGBA ? 4 : 3
     };
 
-    console.log("New texture uploaded args: " + JSON.stringify(arguments));
+    console.log("New texture uploaded with args: " + JSON.stringify(arguments));
     console.log("> Size: " + w + " x " + h);
     console.log("> Attachment: " + attachment);
     // console.log(new Error().stack)
@@ -207,9 +240,31 @@ WebGL2RenderingContext.prototype.texImage2D = (function(texImage2D) {
 })(WebGL2RenderingContext.prototype.texImage2D);
 
 function getTotalGPUMemory() {
-  var total;
+  var total = 0;
   glContexts.forEach(function(gl) {
     var glInfo = glContextsWM.get(gl);
+    var c = glInfo.canvas;
+    total += c.bpp * c.w * c.h * (1 + c.sampleCoverage);
+    total += c.bpd * c.w * c.h * c.sampleCoverage;
+    for (var k in glInfo) {
+      if (k === "canvas") {
+        continue;
+      }
+      var tex = glInfo[k];
+      total += tex.bpp * tex.w * tex.h;
+    }
   });
-  console.log("Total GPU memory used by the page: " + total);
+  total /= 1024 * 1024;
+  total = total.toFixed(2);
+  console.log("Total GPU memory used by the page: " + total + "MB");
 }
+
+Object.defineProperty(HTMLCanvasElement.prototype, "width", {
+  set: function(value) {
+    this._width = value;
+    console.log("new width! ", value);
+  },
+  get: function() {
+    return this._width;
+  }
+});
